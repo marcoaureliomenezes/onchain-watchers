@@ -41,10 +41,15 @@ networks:
 
   goerli:
     link_token: '0x326C977E6efc84E512bB9C30f76E30c160eD06FB'
+    uni_token: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
+    weth_token: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
     lendingPoolAddressProvider: '0x5E52dEc931FFb32f609681B8438A51c675cc232d'
     poolAdressesProvider: '0xc4dCB5126a3AfEd129BC3668Ea19285A9f56D15D'
     uniswapV2Factory: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
     uniswapV3Factory: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
+    uniswapV2Router02: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+    uniswapV3Router: '0xE592427A0AEce92De3Edee1F18E0157C05861564'
+
 
   polygon-main:
     aave_pool_addresses_provider: '0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb'

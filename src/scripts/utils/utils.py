@@ -70,14 +70,17 @@ def run_concurrently(commands_list):
     return
 
 
-def find_holes(interval, rounds):
-    df_all = pd.DataFrame([i for i in range(*interval, -1)], columns=['whole'])
-    df_real = pd.DataFrame(rounds, columns=['real'])
-    result = pd.merge(df_all, df_real, left_on='whole', right_on='real' ,how='left')
-    result = result.loc[result['real'].isnull()].whole.values
-    return result
+def find_missing_keys(new_tokens, db_engine, table_name, pivot):
+    df_new_tokens = pd.DataFrame(new_tokens, columns=['missing_leys'])
+    df_recorded_tokens = pd.read_sql_query(f"SELECT {pivot} FROM {table_name}", con=db_engine)
+    df_tokens = pd.merge(df_new_tokens, df_recorded_tokens, left_on='missing_leys', right_on=pivot, how='left')
+    token_missing = df_tokens.loc[df_tokens[pivot].isnull(), 'missing_leys'].values
+    return token_missing
 
+    
 
 def get_methods(object):
     return [method_name for method_name in dir(object)
                   if callable(getattr(object, method_name))]
+
+

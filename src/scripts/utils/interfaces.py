@@ -13,6 +13,20 @@ def get_ERC20_contract(token_address):
     return erc20_contract
 
 
+def get_ERC20_metadata(token, description):
+    ERC20_contract = interface.IERC20(token)
+    res = dict(tokenAddress = token, decimals = ERC20_contract.decimals())
+    try:
+        res['name'] = ERC20_contract.name()
+        res['symbol'] = ERC20_contract.symbol()
+    except OverflowError as e:
+        print(f"Error with token {token}")
+        res['name'] = None
+        res['symbol']  = None
+    res['description'] = description
+    return res
+
+    
 def get_V3_aggregator(oracle_contract, asset_address):
     try:
         aggregator_address = oracle_contract.getSourceOfAsset(asset_address)
@@ -31,8 +45,6 @@ def get_protocol_provider():
     return aave_protocol_provider
 
 
-def get_uniswap_pools(list_tokens, address_uniswap_factory):
-    pass
 
 
 def get_uniswap_factory(version=2):
