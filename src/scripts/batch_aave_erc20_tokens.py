@@ -42,10 +42,4 @@ def main(version):
     df_erc20_data = pd.DataFrame([get_ERC20_metadata(token) for token in aave_tokens])
     df_erc20_data["description"] = f"AAVE V{version}"
     df_erc20_data.to_sql(erc20_table, con=db_engine, if_exists='append', index=False)
-   
-    # metadata_assets = update_metadata_tokens_aave(aave_pool_contract, db_engine, table_name)
-    # print(metadata_assets)
-
-
-
-
+    

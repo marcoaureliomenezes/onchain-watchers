@@ -66,11 +66,8 @@ def get_aave_pool(version):
     return lending_pool
 
     
-def get_indexes_datatypes(list_type_tokens):
-    if network.show_active() == 'mainnet':
-        reserve = reserves_struct_v2
-    else:
-        reserve = reserves_struct_v3
+def get_indexes_datatypes(version, list_type_tokens):
+    reserve = reserves_struct_v2 if version == '2' else reserves_struct_v3
     return {i: reserve.index(list(filter(lambda x: x["campo"] == i, reserve))[0]) for i in list_type_tokens}
 
 def get_price_oracle():
