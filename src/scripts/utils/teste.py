@@ -53,6 +53,7 @@ def find_connection(list_pairs, wished_swap):
         print(derretido_filtrado)
         conn = [i for i in derretido_filtrado if derretido_filtrado.count(i) == 2]
         conn2 = set(conn)
+        print("hello")
         print(conn2)
         if len(conn2) > 0:
             for i in conn:

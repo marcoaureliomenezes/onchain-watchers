@@ -1,17 +1,10 @@
-import sys
+import logging
 import pandas as pd
-from requests import HTTPError
-from brownie import interface, config, network
+from brownie import interface
 from scripts.utils.utils import setup_database, table_exists
-from scripts.utils.interfaces import get_aave_pool, get_indexes_datatypes
+from scripts.utils.interfaces import get_aave_pool
 
-
-def get_reserve_tokens(token):
-    pool_contract = get_aave_pool()
-    list_type_tokens = ["aTokenAddress", "stableDebtTokenAddress", "variableDebtTokenAddress"]
-    res = get_indexes_datatypes(list_type_tokens)
-    tokens = [pool_contract.getReserveData(token)[res[type_token]] for type_token in list_type_tokens]
-    return {"tokenAddress": token, **{list_type_tokens[i]: tokens[i] for i in range(len(tokens))}}
+logging.basicConfig(level='INFO')
 
 
 def get_ERC20_metadata(token):
@@ -36,24 +29,6 @@ def find_missing_tokens(new_tokens, db_engine, table_name):
     return token_missing
 
 
-def update_metadata_tokens_aave(pool_contract, db_engine, table_name):
-
-    if table_exists(db_engine, table_name):
-        aave_tokens = find_missing_tokens(aave_tokens, db_engine, table_name)
-        if len(aave_tokens) == 0: 
-            return "UPDATED"
-    try:
-        df_erc20_data = pd.DataFrame([get_ERC20_metadata(token) for token in aave_tokens])
-        df_reserve_data = pd.DataFrame([get_reserve_tokens(token) for token in aave_tokens])
-        print(df_reserve_data)
-    except HTTPError as e:
-        print(e.response)
-        sys.exit(13)
-    df_token_metadata = pd.merge(df_erc20_data, df_reserve_data, on="tokenAddress", how="left")
-    df_token_metadata.to_sql(table_name, con=db_engine, if_exists='append', index=False)
-    return 'SUCCESS'
- 
-
 def main(version):
     db_engine = setup_database()
     erc20_table = "erc_20_tokens"
@@ -61,8 +36,9 @@ def main(version):
     aave_tokens = aave_contract.getReservesList()
     if table_exists(db_engine, erc20_table):
         aave_tokens = find_missing_tokens(aave_tokens, db_engine, erc20_table)
-        if len(aave_tokens) == 0: 
-            return "UPDATED"
+        if len(aave_tokens) == 0:
+            logging.info(f"Information about tokens AAVE V{version} already updated")
+            return
     df_erc20_data = pd.DataFrame([get_ERC20_metadata(token) for token in aave_tokens])
     df_erc20_data["description"] = f"AAVE V{version}"
     df_erc20_data.to_sql(erc20_table, con=db_engine, if_exists='append', index=False)
