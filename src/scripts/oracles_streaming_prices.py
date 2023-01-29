@@ -31,26 +31,6 @@ def produce_with_kafka(producer, prices):
     for price in prices:
         producer.send(topic=os.environ['TOPIC_ORACLES'], value=price)
 
-# Constant Product Market Maker 
-# Order Book Model
-# Um provedor de liquidez produz uma pool com 4 DAI e 4 USDC
-# Se uma pessoa quer trocar 3 DAI por USDC o novo estado da piscina
-# será 7 DAI * x USDC que manterão o produto constante.
-# A quantidade de USDC a ser sacada será então (4 * 4) / 7 = 2.28.
-# TROCAR 1 DAI: (4 * 4) / 5 = 3.20
-# TROCAR 2 DAI: (4 * 4) / 6 = 2.67
-# TROCAR 4 DAI: (4 * 4) / 8 = 2.
-
-# Considerando que o preço DAI/ETH é 1000 DAI/ETH
-
-# 5.000.000 DAI # 5.000 ETH Constante = 25.000.000.000
-
-# Preço para comprar 10 ETH
-
-# 4.990 ETH * 5.010.020,04 DAI = 25.000.000.000
-
-# Receberei 5.010.020,04
-# Receberei 10.020,04 DAI
 def main():
 
     db_engine = setup_database()

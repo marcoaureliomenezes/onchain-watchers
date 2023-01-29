@@ -17,6 +17,6 @@ RUN brownie pm install smartcontractkit/chainlink-brownie-contracts@1.1.1
 COPY ./src .
 
 RUN ln -s /app/scripts/run_alles.sh /usr/local/bin/RUN_ALLES
-RUN brownie compile
+#RUN brownie compile
 
 ENTRYPOINT [ "sleep", "infinity" ]

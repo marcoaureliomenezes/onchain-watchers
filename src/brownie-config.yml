@@ -40,7 +40,8 @@ networks:
     uniswapV3Factory: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 
   goerli:
-    aave_pool_addresses_provider: '0xc4dCB5126a3AfEd129BC3668Ea19285A9f56D15D'
+    lendingPoolAddressProvider: '0x5E52dEc931FFb32f609681B8438A51c675cc232d'
+    poolAdressesProvider: '0xc4dCB5126a3AfEd129BC3668Ea19285A9f56D15D'
     uniswapV2Factory: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
     uniswapV3Factory: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 

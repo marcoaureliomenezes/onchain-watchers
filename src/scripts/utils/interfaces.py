@@ -51,22 +51,21 @@ def get_uniswap_pair_pool(pool_address):
     return interface.IUniswapV2Pair(pool_address)
 
 
-def get_aave_pool():
-    address = ACTIVE_NETWORK['aave_pool_addresses_provider']
-    try:
-        if network.show_active() == 'mainnet':
-            pool_addresses_provider = interface.IPoolAddressesProviderV2(address)
-            pool_address = pool_addresses_provider.getLendingPool()
-            lending_pool = interface.IPoolV2(pool_address)
-        else:
-            pool_addresses_provider = interface.IPoolAddressesProviderV3(address)
-            pool_address = pool_addresses_provider.getPool()
-            lending_pool = interface.IPoolV3(pool_address)
-    except HTTPError as e:
-        if str(e)[:3] == '429':
-            sys.exit(13)
+def get_aave_pool(version):
+    active_config = config["networks"][network.show_active()]
+    if version == '2':
+        address = active_config['lendingPoolAddressProvider']
+        pool_addresses_provider = interface.IPoolAddressesProviderV2(address)
+        pool_address = pool_addresses_provider.getLendingPool()
+        lending_pool = interface.IPoolV2(pool_address)
+    else:
+        address = active_config['poolAdressesProvider']
+        pool_addresses_provider = interface.IPoolAddressesProviderV3(address)
+        pool_address = pool_addresses_provider.getPool()
+        lending_pool = interface.IPoolV3(pool_address)
     return lending_pool
 
+    
 def get_indexes_datatypes(list_type_tokens):
     if network.show_active() == 'mainnet':
         reserve = reserves_struct_v2
