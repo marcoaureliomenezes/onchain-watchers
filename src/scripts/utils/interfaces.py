@@ -82,22 +82,18 @@ def get_indexes_datatypes(version, list_type_tokens):
     reserve = reserves_struct_v2 if version == '2' else reserves_struct_v3
     return {i: reserve.index(list(filter(lambda x: x["campo"] == i, reserve))[0]) for i in list_type_tokens}
 
-def get_price_oracle():
-    address = ACTIVE_NETWORK['aave_pool_addresses_provider']
-    try:
-        if network.show_active() == 'mainnet':
-            pool_addresses_provider = interface.IPoolAddressesProviderV2(address)
-            price_oracle_address = pool_addresses_provider.getPriceOracle()
-            price_oracle = interface.IAaveOracleV2(price_oracle_address)
-        else:
-            pool_addresses_provider = interface.IPoolAddressesProviderV3(address)
-            price_oracle_address = pool_addresses_provider.getPriceOracle()
-            price_oracle = interface.IAaveOracleV3(price_oracle_address)
-    except HTTPError as e:
-        if str(e)[:3] == '429':
-            sys.exit(13)
-        print(e)
-        sys.exit(14)
+
+def get_price_oracle(version):
+    if version == '2':
+        address = ACTIVE_NETWORK['lendingPoolAddressProvider']
+        pool_addresses_provider = interface.IPoolAddressesProviderV2(address)
+        price_oracle_address = pool_addresses_provider.getPriceOracle()
+        price_oracle = interface.IAaveOracleV2(price_oracle_address)
+    else:
+        address = ACTIVE_NETWORK['poolAddressProvider']
+        pool_addresses_provider = interface.IPoolAddressesProviderV3(address)
+        price_oracle_address = pool_addresses_provider.getPriceOracle()
+        price_oracle = interface.IAaveOracleV3(price_oracle_address)
     return price_oracle
 
 

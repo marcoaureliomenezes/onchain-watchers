@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, logging
 from brownie import interface
 from scripts.utils.interfaces import get_uniswap_factory, get_uniswap_pair_pool
 from scripts.utils.utils import setup_database, table_exists
@@ -6,9 +6,8 @@ from itertools import combinations
 import pandas as pd
 import numpy as np
 
-
+logging.basicConfig(level='INFO')
 NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
-
 
 def get_pair_pure_combinations(tokens):
     list_pool_pairs =list(combinations(tokens, 2))
@@ -30,64 +29,34 @@ def idempotent_append(pairs, table_name, db_engine):
     return pairs
 
 
-def efficient_append(df, table_name, db_engine):
-    return df.to_sql(table_name, con=db_engine, if_exists='append', index=False)
-
-
-def handle_token_symbols(df):
-    df['identifier'] = np.where(df['symbol'].isnull(), df['tokenAddress'], df['symbol'])
-    df = df.drop(columns=['symbol'])
-    df.columns = ['tokenAddress', 'pair']
-    return df
-
-
 def get_metadata_pools(uniswap_factory, token_pairs):
     list_pool_addresses = [(uniswap_factory.getPair(tokenA, tokenB), tokenA, tokenB) for tokenA, tokenB in token_pairs]
-    addresses_pools = [contract for contract, _, _ in list_pool_addresses]
-    list_pool_contracts = [get_uniswap_pair_pool(contract) if contract != NULL_ADDRESS else None for contract in addresses_pools]
-
-    list_pool_metadata = [(contract.symbol(), contract.decimals()) 
-                                        if contract else ( None, None) for contract in list_pool_contracts]
-    
-    data = [list_pool_addresses[i] + list_pool_metadata[i] for i in range(len(list_pool_addresses))]
-    uniswap_pool_metadata_columns = ['pool_address', 'address_token_a', 'address_token_b', 'symbol', 'decimals']
-    df = pd.DataFrame(data ,columns=uniswap_pool_metadata_columns).astype({'decimals': 'Int64'})
+    uniswap_pair_pool_cols = ['pool_address', 'address_token_a', 'address_token_b']
+    df = pd.DataFrame(list_pool_addresses ,columns=uniswap_pair_pool_cols)
     return df
 
 def get_pair_name(df_pools, df_metadata_tokens):
-    df_pools = pd.merge(df_pools, df_metadata_tokens, left_on='address_token_a', right_on='tokenAddress')
-    df_pools = df_pools.drop(columns=['tokenAddress'])
-    df_pools = pd.merge(df_pools, df_metadata_tokens, left_on='address_token_b', right_on='tokenAddress')
-    df_pools = df_pools.drop(columns=['tokenAddress'])
-    df_pools['pair'] = df_pools[['pair_x', 'pair_y']].apply(lambda x: '_'.join(x), axis=1)
-    df_pools = df_pools.drop(columns=['pair_x', 'pair_y'])
-    return df_pools
-
-def method(uniswap_factory, db_engine, table_name):
-
-
-    
-    df_pools = get_pair_name(df_pools, df_metadata_tokens)
-    efficient_append(df_pools, table_name, db_engine)
-    return "SUCCESS"
+    df_pair_pool = pd.merge(left=df_pools, right=df_metadata_tokens, left_on="address_token_a", right_on="tokenAddress", how='left')
+    df_pair_pool["token_a"] = df_pair_pool['symbol'] + "_" + df_pair_pool['description']
+    df_pair_pool = df_pair_pool[["pool_address", "address_token_a", "address_token_b", "token_a"]]
+    df_pair_pool = pd.merge(left=df_pair_pool, right=df_metadata_tokens, left_on="address_token_b", right_on="tokenAddress", how='left')
+    df_pair_pool["token_b"] = df_pair_pool['symbol'] + "_" + df_pair_pool['description']
+    df_pair_pool["pair_info"] = df_pair_pool['token_a'] + " / " + df_pair_pool['token_b']
+    df_pair_pool = df_pair_pool[["pool_address", "address_token_a", "address_token_b", "pair_info"]]
+    return df_pair_pool
 
 
 def main(version):
     db_engine = setup_database()
     table_name = "pools_uniswap"
     uniswap_factory = get_uniswap_factory(version)
-    df_erc20_tokens_aave = pd.read_sql(f"SELECT tokenAddress, symbol FROM tokens_aave", con=db_engine)
-    df_metadata_tokens = handle_token_symbols(df_erc20_tokens_aave)  
-    list_tokens = df_metadata_tokens['tokenAddress'].values
-    uni_token = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
-    weth_token = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
-    list_tokens = list(list_tokens) + [uni_token, weth_token]
+    df_erc20_tokens = pd.read_sql(f"SELECT * FROM erc_20_tokens", con=db_engine)
+    list_tokens = df_erc20_tokens['tokenAddress'].values
     list_pool_pairs = get_pair_pure_combinations(list_tokens)
     list_pool_pairs = idempotent_append(list_pool_pairs, table_name, db_engine)
     if len(list_pool_pairs) == 0: 
-        return "UPDATED"
+        logging.info(f"Information about tokens UNISWAP V{version} already updated")
+        return
     df_pools = get_metadata_pools(uniswap_factory, list_pool_pairs)
-    print(df_pools)
-    #update_table_uniswap_pools = method(uniswap_factory, db_engine, table_name)
-    #print(update_table_uniswap_pools)
-    
+    df_pair_pool = get_pair_name(df_pools, df_erc20_tokens)
+    df_pair_pool.to_sql(table_name, con=db_engine, if_exists='append', index=False)

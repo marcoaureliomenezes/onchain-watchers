@@ -7,52 +7,55 @@ import time, os, sys, json
 from datetime import datetime
 
 
-def get_tokens(db_engine):
-    query = "SELECT pair, MAX(tokenAddress) AS tokenAddress FROM metadata_oracles GROUP BY pair"
+def get_tokens(db_engine, version):
+    query = f"SELECT * FROM erc_20_tokens WHERE description = 'AAVE V{version}'"
     df_assets = pd.read_sql(query, con=db_engine)
     return df_assets
 
 
-def get_new_frame(oracle_contract, list_pairs):
-    list_pairs_2 = list_pairs.copy()
-    addresses = [i for i in list_pairs_2['tokenAddress'].values]
-    try:
-        assets_new_prices = oracle_contract.getAssetsPrices(addresses)
-    except HTTPError as e:
-        if str(e)[:3] == '429':
-            sys.exit(13)
-    serie_prices = pd.Series(list(assets_new_prices), copy=False)
-    list_pairs_2['prices'] = serie_prices
-    list_pairs_2.drop(columns=["tokenAddress"], inplace=True)
-    list_pairs_2 = [{list_pairs_2.columns[j]: i[j+1] for j in range(len(list_pairs_2.columns))} for i in list_pairs_2.itertuples()]
-    return list_pairs
+def get_new_frame(oracle_contract, df_tokens_address, block_no):
+
+    list_token_addresses = list(df_tokens_address["tokenAddress"].values)
+    list_symbols = list(df_tokens_address["symbol"].values)
+    assets_new_prices = oracle_contract.getAssetsPrices(list_token_addresses)
+    res = [(list_symbols[i], assets_new_prices[i], block_no) for i in range(len(assets_new_prices))]
+    df = pd.DataFrame(res, columns=["token", "price", "block_no"])
+    return df
+
 
 def produce_with_kafka(producer, prices):
     for price in prices:
         producer.send(topic=os.environ['TOPIC_ORACLES'], value=price)
 
-def main():
+def aggregator(df_aave_prices, df_price_cumulator):
 
+    df_price_cumulator = pd.concat([df_aave_prices, df_price_cumulator])
+    df_price_cumulator = df_price_cumulator.groupby(['token', 'price']).min()
+    df_price_cumulator.sort_values(by=['block_no', 'token'], inplace=True)
+    df_price_cumulator.reset_index(inplace=True)
+    return df_price_cumulator
+
+def main(version):
     db_engine = setup_database()
     producer = get_kafka_producer()
-    consumer_blocks = get_kafka_consumer(os.environ['TOPIC_BLOCKS'], group_id=os.environ['CONSUMER_GROUP'], auto_offset_reset='latest')
-    pair_address = get_tokens(db_engine)[:2]
-    oracle_contract = get_price_oracle()
+    topic_blocks = f"{network.show_active()}_{os.environ['TOPIC_INPUT']}"
+    consumer_group = os.environ['CONSUMER_GROUP']
+    consumer_blocks = get_kafka_consumer(topic_blocks, group_id=consumer_group, auto_offset_reset='latest')
+    df_tokens_address = get_tokens(db_engine, version)
+    oracle_contract = get_price_oracle(version)
+    df_price_cumulator = pd.DataFrame([], columns=["token", "price", "block_no"])
+    offset_counter = 0
     for msg in consumer_blocks:
-        block_num = json.loads(msg.value)['block_no']
-        pair_address['block_num'] = block_num
-        block_prices = get_new_frame(oracle_contract, pair_address)
-        produce_with_kafka(producer, block_prices)
+        block_number = json.loads(msg.value)['number']
+        df_aave_prices = get_new_frame(oracle_contract, df_tokens_address, block_number)
+        df_price_cumulator = aggregator(df_aave_prices, df_price_cumulator)
 
-        # length_before = df_record.shape[0]
-        # df_record = pd.concat([df_record, df_actual_prices])
-        # df_record = df_record.groupby(['pair', 'tokenAddress', 'prices'], as_index=False).min()
-        # df_record.sort_values(by=['block_num'], ascending=True, inplace=True)
-        # length_after = df_record.shape[0]
-        # difference = length_after - length_before
-        # if difference > 0:
-        #     value_to_record = df_record.tail(difference)
-        #     produce_with_kafka(producer, value_to_record)
-        #     df_record = df_record.groupby(['pair', 'tokenAddress'], as_index=False).max()
+        # df_price_cumulator = pd.concat([df_price_cumulator, df_aave_prices])
+        # df_price_cumulator.drop_duplicates(inplace=True)
+        # df_price_cumulator.sort_values(by=['token'], inplace=True)
+        print(df_price_cumulator)
+        offset_counter += 1
+        #produce_with_kafka(producer, block_prices)
+
 
 

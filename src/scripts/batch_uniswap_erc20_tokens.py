@@ -8,8 +8,6 @@ logging.basicConfig(level='INFO')
 
 
 
-
-
 def main(version):
     db_engine = setup_database()
     erc20_table = "erc_20_tokens"

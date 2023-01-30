@@ -33,7 +33,7 @@ networks:
 
   mainnet:
 
-    aave_pool_addresses_provider: '0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5'
+    lendingPoolAddressProvider: '0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5'
     ether_pricefeed: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419'
     protocol_data_provider: '0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d'
     uniswapV2Factory: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
